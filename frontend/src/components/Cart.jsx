@@ -1,12 +1,46 @@
-import { useState } from 'react';
+import React from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
-import CheckoutForm from './CheckoutForm'; // Asegúrate de que este archivo exista
+import CheckoutForm from './CheckoutForm';
 import useCartStore from '../store/cartStore';
 
-// ⚠️ ¡SÍ! PEGA AQUÍ TU CLAVE PÚBLICA COMPLETA DE STRIPE. 
-// No borres ningún carácter. Ejemplo: 'pk_test_51Qxxxxxxxx...xxxxxjNRq'
-   const stripePromise = loadStripe('pk_test_51UCUftAbdFzVfXTNE461DmsAPPkLjlG0lJfOXfNu1aFwv0EZqgeoguFXm5Qz7kx1VgX8qYKqJqbpQfgWlMkoRYLe00kLyzjNRq');
+// ⚠️ Reemplaza con tu clave pública real de Stripe
+const stripePromise = loadStripe('pk_test_51UCUftAbdFzVfXTNE461DmsAPPkLjlG0lJfOXfNu1aFwv0EZqgeoguFXm5Qz7kx1VgX8qYKqJqbpQfgWlMkoRYLe00kLyzjNRq');
+
+// 🔥 OPTIMIZACIÓN 1: Componente de Item memoizado
+const CartItem = React.memo(({ item, onRemove, onUpdateQuantity }) => {
+  return (
+    <div className="flex items-center gap-4 border-b pb-4">
+      <img 
+        src={item.image_url || 'https://via.placeholder.com/80'} 
+        alt={item.name}
+        loading="lazy"  //  Lazy loading en el carrito también
+        className="w-20 h-20 object-cover rounded"
+      />
+      <div className="flex-1">
+        <h3 className="font-semibold">{item.name}</h3>
+        <p className="text-gray-600">${item.price}</p>
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+            className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+          >-</button>
+          <span className="font-medium">{item.quantity}</span>
+          <button
+            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+            className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+          >+</button>
+        </div>
+      </div>
+      <button
+        onClick={() => onRemove(item.id)}
+        className="text-red-600 hover:text-red-800 text-xl"
+      >🗑️</button>
+    </div>
+  );
+});
+
 function Cart() {
   const { cart, total, isCartOpen, toggleCart, removeFromCart, updateQuantity, clearCart } = useCartStore();
   
@@ -14,13 +48,19 @@ function Cart() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 1. Cuando el usuario hace clic en "Proceder al Pago"
-  const handleInitiatePayment = async () => {
+  // 🔥 OPTIMIZACIÓN 2: Memoizar el total formateado
+  const formattedTotal = useMemo(() => total.toFixed(2), [total]);
+
+  // 🔥 OPTIMIZACIÓN 3: Memoizar funciones para evitar re-renders en CartItem
+  const handleRemove = useCallback((id) => removeFromCart(id), [removeFromCart]);
+  const handleUpdateQuantity = useCallback((id, qty) => updateQuantity(id, qty), [updateQuantity]);
+
+  // 🔥 OPTIMIZACIÓN 4: Manejo de pago con useCallback
+  const handleInitiatePayment = useCallback(async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
 
     try {
-      // Pedimos al backend que cree el "PaymentIntent" en Stripe
       const response = await fetch('http://localhost:4000/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -31,7 +71,7 @@ function Cart() {
       
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
-        setShowCheckout(true); // Mostramos el formulario de tarjeta
+        setShowCheckout(true);
       } else {
         alert('Error al iniciar el pago: ' + (data.error || 'Desconocido'));
       }
@@ -41,16 +81,20 @@ function Cart() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [cart.length, total]);
 
-  // 2. Cuando el pago en CheckoutForm es exitoso
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = useCallback(() => {
     alert('¡Pago exitoso! Gracias por tu compra. 🎉');
-    clearCart(); // Vaciamos el carrito
-    setShowCheckout(false); // Ocultamos el formulario
+    clearCart();
+    setShowCheckout(false);
     setClientSecret('');
-    toggleCart(); // Cerramos el carrito lateral
-  };
+    toggleCart();
+  }, [clearCart, toggleCart]);
+
+  const handleBackToCart = useCallback(() => {
+    setShowCheckout(false);
+    setClientSecret('');
+  }, []);
 
   if (!isCartOpen) return null;
 
@@ -65,43 +109,22 @@ function Cart() {
         {cart.length === 0 ? (
           <p className="text-gray-500 text-center py-10">Tu carrito está vacío</p>
         ) : !showCheckout ? (
-          // VISTA 1: Resumen del carrito
           <>
             <div className="space-y-4 mb-6">
               {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 border-b pb-4">
-                  <img 
-                    src={item.image_url || 'https://via.placeholder.com/80'} 
-                    alt={item.name}
-                    className="w-20 h-20 object-cover rounded"
-                  />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-gray-600">${item.price}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
-                      >-</button>
-                      <span className="font-medium">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
-                      >+</button>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="text-red-600 hover:text-red-800 text-xl"
-                  >🗑️</button>
-                </div>
+                <CartItem
+                  key={item.id}
+                  item={item}
+                  onRemove={handleRemove}
+                  onUpdateQuantity={handleUpdateQuantity}
+                />
               ))}
             </div>
 
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-xl font-bold">Total:</span>
-                <span className="text-2xl font-bold text-blue-600">${total.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-blue-600">${formattedTotal}</span>
               </div>
               <button
                 onClick={handleInitiatePayment}
@@ -113,7 +136,6 @@ function Cart() {
             </div>
           </>
         ) : (
-          // VISTA 2: Formulario de Pago de Stripe
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-800">
@@ -122,13 +144,12 @@ function Cart() {
               </p>
             </div>
 
-            {/* Elements envuelve el formulario y le pasa la configuración de Stripe */}
             <Elements stripe={stripePromise} options={{ clientSecret }}>
               <CheckoutForm clientSecret={clientSecret} onSuccess={handlePaymentSuccess} />
             </Elements>
 
             <button 
-              onClick={() => { setShowCheckout(false); setClientSecret(''); }} 
+              onClick={handleBackToCart} 
               className="w-full text-gray-600 hover:text-gray-900 py-2 text-sm font-medium"
             >
               ← Volver al resumen del carrito
@@ -140,4 +161,4 @@ function Cart() {
   );
 }
 
-export default Cart;
+export default React.memo(Cart);
