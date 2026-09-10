@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useCartStore from '../store/cartStore';
+import logo from '../assets/logo-1.png';
 
 function ProductList() {
   const [products, setProducts] = useState([]);
@@ -56,8 +57,9 @@ function ProductList() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-        🛒 Tienda E-commerce
+      <h1 className="flex items-center justify-center gap-3 text-4xl font-bold text-center mb-8 text-gray-800">
+        <img src={logo} alt="" className="h-12 w-12 object-contain" />
+        Tienda E-commerce
       </h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

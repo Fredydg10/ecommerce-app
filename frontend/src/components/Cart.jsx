@@ -4,6 +4,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from './CheckoutForm';
 import useCartStore from '../store/cartStore';
+import logo from '../assets/logo-1.png';
 
 // ⚠️ Reemplaza con tu clave pública real de Stripe
 const stripePromise = loadStripe('pk_test_51UCUftAbdFzVfXTNE461DmsAPPkLjlG0lJfOXfNu1aFwv0EZqgeoguFXm5Qz7kx1VgX8qYKqJqbpQfgWlMkoRYLe00kLyzjNRq');
@@ -102,7 +103,10 @@ function Cart() {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-50">
       <div className="bg-white w-full max-w-md h-full overflow-y-auto p-6 shadow-xl">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">🛒 Carrito</h2>
+          <h2 className="flex items-center gap-2 text-2xl font-bold">
+            <img src={logo} alt="" className="h-7 w-7 object-contain" />
+            Carrito
+          </h2>
           <button onClick={toggleCart} className="text-gray-600 hover:text-gray-900 text-2xl">✕</button>
         </div>
 
