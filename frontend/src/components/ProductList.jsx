@@ -14,7 +14,7 @@ function ProductList() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:4000/api/products');
+        const response = await fetch('https://ecommerce-app-owte.onrender.com/api/products');
         if (!response.ok) throw new Error('Error al cargar productos');
         const data = await response.json();
         setProducts(data);

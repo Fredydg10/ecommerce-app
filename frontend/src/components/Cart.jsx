@@ -61,7 +61,7 @@ function Cart() {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('http://localhost:4000/api/create-payment-intent', {
+      const response = await fetch('https://ecommerce-app-owte.onrender.com/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ total_amount: total }),
